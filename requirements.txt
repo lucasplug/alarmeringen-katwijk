@@ -1,2 +1,4 @@
 feedparser
 paho-mqtt
+requests
+python-dateutil
