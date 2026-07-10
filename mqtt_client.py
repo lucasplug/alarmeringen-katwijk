@@ -14,11 +14,22 @@ class MqttPublisher:
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
 
-        self.client.connect(host, port, 60)
+        # Automatisch herverbinden met backoff (1s -> 120s) als de
+        # verbinding wegvalt.
+        self.client.reconnect_delay_set(min_delay=1, max_delay=120)
+
+        # connect_async (i.p.v. connect) zorgt dat de container niet
+        # meteen crasht als de MQTT-broker bij het opstarten nog niet
+        # bereikbaar is. Paho blijft dan op de achtergrond retryen
+        # zodra loop_start() draait.
+        self.client.connect_async(host, port, keepalive=60)
         self.client.loop_start()
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
-        logging.info("Verbonden met MQTT broker: %s", reason_code)
+        if reason_code == 0:
+            logging.info("Verbonden met MQTT broker")
+        else:
+            logging.warning("MQTT verbinding mislukt: %s", reason_code)
 
     def _on_disconnect(self, client, userdata, flags, reason_code, properties):
         logging.warning("MQTT verbinding verbroken: %s", reason_code)
