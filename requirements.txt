@@ -1,4 +1,5 @@
-feedparser
-paho-mqtt
-requests
-python-dateutil
+feedparser==6.0.11
+paho-mqtt==2.1.0
+requests==2.32.3
+python-dateutil==2.9.0.post0
+tzdata==2025.2
