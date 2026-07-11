@@ -77,14 +77,20 @@ def load_state():
 
 
 def save_state():
+    """Schrijft eerst naar een tijdelijk bestand en vervangt daarna pas het
+    echte state-bestand, zodat een crash tijdens het schrijven nooit een
+    corrupt state.json achterlaat."""
+    tmp_file = f"{STATE_FILE}.tmp"
+
     try:
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
+        with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(
                 {"seen_ids": list(seen_ids_order), "history": history},
                 f,
                 ensure_ascii=False,
             )
+        os.replace(tmp_file, STATE_FILE)
     except Exception as exc:
         logging.warning("Kon state niet opslaan: %s", exc)
 
@@ -191,65 +197,6 @@ def main():
 
             if state_changed:
                 save_state()
-
-        except Exception as exc:
-            logging.exception("Fout bij ophalen/publiceren: %s", exc)
-
-        time.sleep(INTERVAL)
-
-
-if __name__ == "__main__":
-    main()            "Geocode OK: %s -> %.5f, %.5f (%s km)",
-            query,
-            alert.lat,
-            alert.lon,
-            alert.afstand_km,
-        )
-
-    except Exception as exc:
-        logging.warning("Geocoding mislukt voor %s: %s", query, exc)
-
-    return alert
-
-
-def main():
-    global history
-
-    logging.info("Alarmeringen Katwijk gestart")
-    logging.info("Feed: %s", FEED_URL)
-    logging.info("MQTT broker: %s:%s", MQTT_HOST, MQTT_PORT)
-    logging.info("MQTT topic base: %s", MQTT_TOPIC_BASE)
-
-    mqtt = MqttPublisher(
-        host=MQTT_HOST,
-        port=MQTT_PORT,
-        user=MQTT_USER,
-        password=MQTT_PASSWORD,
-        topic_base=MQTT_TOPIC_BASE,
-    )
-
-    while True:
-        try:
-            alerts = fetch_alerts(FEED_URL, HISTORY_SIZE)
-
-            for alert in reversed(alerts):
-                if alert.id in seen_ids:
-                    continue
-
-                seen_ids.add(alert.id)
-
-                alert = enrich_alert(alert)
-
-                alert_payload = alert.to_dict()
-
-                history.insert(0, alert_payload)
-                history = history[:HISTORY_SIZE]
-
-                mqtt.publish_json("laatste", alert_payload, retain=True)
-                mqtt.publish_json("historie", history, retain=True)
-                mqtt.publish_json("melding", alert_payload, retain=False)
-
-                logging.info("Nieuwe melding gepubliceerd: %s", alert.titel)
 
         except Exception as exc:
             logging.exception("Fout bij ophalen/publiceren: %s", exc)
