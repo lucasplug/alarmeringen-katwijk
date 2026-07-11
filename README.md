@@ -1,6 +1,3 @@
-# alarmeringen-katwijk
-
-Home Assistant MQTT bridge for alarmeringen.nl Katwijk RSS feed
 # 🚒 Alarmeringen Katwijk
 
 Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en nieuwe meldingen publiceert naar een MQTT-broker. Ontworpen voor gebruik met Home Assistant, Frigate, Node-RED en andere MQTT-clients.
@@ -55,7 +52,7 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 Clone de repository:
 
 ```bash
-git clone https://github.com/<github-gebruikersnaam>/alarmeringen-katwijk.git
+git clone https://github.com/lucasplug/alarmeringen-katwijk.git
 cd alarmeringen-katwijk
 ```
 

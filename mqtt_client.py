@@ -38,5 +38,13 @@ class MqttPublisher:
         topic = f"{self.topic_base}/{subtopic}"
         message = json.dumps(payload, ensure_ascii=False)
         result = self.client.publish(topic, message, retain=retain)
-        result.wait_for_publish()
-        logging.info("Gepubliceerd naar %s", topic)
+
+        # Timeout voorkomt dat de poll-loop oneindig blijft hangen als de
+        # broker langdurig onbereikbaar is; paho blijft op de achtergrond
+        # herverbinden en levert het bericht alsnog af waar mogelijk.
+        result.wait_for_publish(timeout=10)
+
+        if result.is_published():
+            logging.info("Gepubliceerd naar %s", topic)
+        else:
+            logging.warning("Publiceren naar %s (nog) niet bevestigd", topic)

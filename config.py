@@ -21,3 +21,6 @@ GEOCODER_USER_AGENT = os.getenv(
     "GEOCODER_USER_AGENT",
     "alarmeringen-katwijk/1.0"
 )
+
+STATE_FILE = os.getenv("STATE_FILE", "/app/data/state.json")
+MAX_SEEN_IDS = int(os.getenv("MAX_SEEN_IDS", "1000"))

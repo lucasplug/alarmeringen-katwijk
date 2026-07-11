@@ -1,0 +1,12 @@
+services:
+  alarmeringen-katwijk:
+    build: .
+    container_name: alarmeringen-katwijk
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - alarmeringen-data:/app/data
+
+volumes:
+  alarmeringen-data:
