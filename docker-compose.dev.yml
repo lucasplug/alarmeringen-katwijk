@@ -1,0 +1,19 @@
+# Lokaal ontwikkelen: bouwt het image uit deze repo en leest de configuratie
+# uit een .env-bestand.
+#
+#   docker compose -f docker-compose.dev.yml up -d --build
+services:
+  alarmeringen-katwijk:
+    build: .
+    image: alarmeringen-katwijk:dev
+    container_name: alarmeringen-katwijk-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: Europe/Amsterdam
+    volumes:
+      - alarmeringen-data:/app/data
+
+volumes:
+  alarmeringen-data:

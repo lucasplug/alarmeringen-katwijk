@@ -1,10 +1,25 @@
+# Portainer-ready: alle configuratie staat inline, er is geen .env nodig.
+# Plak dit als stack in Portainer (Stacks -> Add stack) of wijs naar deze repo.
+# Vul je echte MQTT-gegevens in Portainer in; commit ze niet naar git.
 services:
   alarmeringen-katwijk:
-    build: .
+    image: ghcr.io/lucasplug/alarmeringen-katwijk:latest
     container_name: alarmeringen-katwijk
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      MQTT_HOST: "mqtt.example.local"
+      MQTT_PORT: "1883"
+      MQTT_USER: "mqtt"
+      MQTT_PASSWORD: "vervang_dit"
+      MQTT_TOPIC_BASE: "alarmeringen/katwijk"
+      FEED_URL: "https://alarmeringen.nl/feeds/city/katwijk.rss"
+      INTERVAL: "60"
+      HISTORY_SIZE: "5"
+      GEOCODING_ENABLED: "true"
+      HOME_LAT: ""
+      HOME_LON: ""
+      GEOCODER_USER_AGENT: "alarmeringen-katwijk/1.0"
+      TZ: "Europe/Amsterdam"
     volumes:
       - alarmeringen-data:/app/data
 
