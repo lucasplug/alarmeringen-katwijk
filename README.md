@@ -49,31 +49,35 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 
 ## Installatie
 
-Clone de repository:
+`docker-compose.yml` is zelfstandig: alle environment variables staan inline en het gebruikt het kant-en-klare image van GHCR — er is geen `.env` nodig.
+
+**Portainer:** ga naar **Stacks → Add stack → Web editor**, plak de inhoud van `docker-compose.yml`, vul je MQTT-gegevens in en deploy.
+
+**Zonder Portainer:**
+
+```bash
+docker compose up -d
+```
+
+Nieuwe release uitrollen: `docker compose pull && docker compose up -d`.
+
+**Lokaal ontwikkelen** (bouwt uit de broncode, leest `.env`):
 
 ```bash
 git clone https://github.com/lucasplug/alarmeringen-katwijk.git
 cd alarmeringen-katwijk
-```
-
-Maak een `.env` bestand:
-
-```env
+cat > .env << 'EOF'
 MQTT_HOST=mqtt.example.local
 MQTT_PORT=1883
 MQTT_USER=mqtt
 MQTT_PASSWORD=vervang_dit
 HOME_LAT=52.2
 HOME_LON=4.4
+EOF
+docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-Start de container:
-
-```bash
-docker compose up -d --build
-```
-
-De `docker-compose.yml` mount een named volume op `/app/data`, zodat `state.json`
+Beide compose-varianten mounten een named volume op `/app/data`, zodat `state.json`
 (en dus je "reeds geziene meldingen") een herstart van de container overleeft.
 
 ---
