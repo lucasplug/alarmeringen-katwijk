@@ -34,17 +34,27 @@ class MqttPublisher:
     def _on_disconnect(self, client, userdata, flags, reason_code, properties):
         logging.warning("MQTT verbinding verbroken: %s", reason_code)
 
-    def publish_json(self, subtopic, payload, retain=False):
+    def publish_json(self, subtopic, payload, retain=False, qos=1) -> bool:
+        """Publiceert en geeft True terug zodra de broker de publicatie heeft
+        bevestigd. QoS 1 zorgt dat berichten die tijdens een korte
+        verbindingsstoring gepubliceerd worden, door paho worden gequeued en
+        bij reconnect alsnog worden afgeleverd."""
         topic = f"{self.topic_base}/{subtopic}"
         message = json.dumps(payload, ensure_ascii=False)
-        result = self.client.publish(topic, message, retain=retain)
+        result = self.client.publish(topic, message, qos=qos, retain=retain)
 
         # Timeout voorkomt dat de poll-loop oneindig blijft hangen als de
-        # broker langdurig onbereikbaar is; paho blijft op de achtergrond
-        # herverbinden en levert het bericht alsnog af waar mogelijk.
+        # broker langdurig onbereikbaar is.
         result.wait_for_publish(timeout=10)
 
         if result.is_published():
             logging.info("Gepubliceerd naar %s", topic)
-        else:
-            logging.warning("Publiceren naar %s (nog) niet bevestigd", topic)
+            return True
+
+        logging.warning("Publiceren naar %s (nog) niet bevestigd", topic)
+        return False
+
+    def close(self) -> None:
+        """Netjes afsluiten: netwerkloop stoppen en verbinding verbreken."""
+        self.client.loop_stop()
+        self.client.disconnect()
