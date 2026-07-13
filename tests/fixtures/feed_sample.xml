@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Alarmeringen Katwijk</title>
+    <link>https://alarmeringen.nl/city/katwijk</link>
+    <description>P2000 meldingen voor Katwijk</description>
+    <item>
+      <title>P1 Woningbrand Prins Hendrikkade Katwijk</title>
+      <description>Brandweer met spoed (TS) naar Prins Hendrikkade in Katwijk</description>
+      <link>https://alarmeringen.nl/alert/1000003</link>
+      <guid isPermaLink="true">https://alarmeringen.nl/alert/1000003</guid>
+      <pubDate>Fri, 10 Jul 2026 10:39:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>A1 Ambulance met spoed naar Zeeweg in Katwijk</title>
+      <description>Ambulance A1 naar Zeeweg in Katwijk katwzh</description>
+      <link>https://alarmeringen.nl/alert/1000002</link>
+      <guid isPermaLink="true">https://alarmeringen.nl/alert/1000002</guid>
+      <pubDate>Fri, 10 Jul 2026 10:12:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Politie naar Tramstraat Katwijk</title>
+      <description>Politie eenheid gevraagd op Tramstraat in Katwijk</description>
+      <link>https://alarmeringen.nl/alert/1000001</link>
+      <guid isPermaLink="true">https://alarmeringen.nl/alert/1000001</guid>
+      <pubDate>Fri, 10 Jul 2026 09:58:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

@@ -1,111 +1,28 @@
-import json
 import logging
 import os
+import signal
+import sys
+import threading
 import time
-from collections import deque
 
-from config import (
-    FEED_URL,
-    MQTT_HOST,
-    MQTT_PORT,
-    MQTT_USER,
-    MQTT_PASSWORD,
-    MQTT_TOPIC_BASE,
-    INTERVAL,
-    HISTORY_SIZE,
-    GEOCODING_ENABLED,
-    HOME_LAT,
-    HOME_LON,
-    GEOCODER_USER_AGENT,
-    STATE_FILE,
-    MAX_SEEN_IDS,
-)
+import requests
+
+from config import Config, ConfigError, load_config
 from geocoding import geocode, haversine_km
 from mqtt_client import MqttPublisher
-from rss_feed import fetch_alerts
-
+from rss_feed import FeedError, fetch_alerts
+from state import AlertState
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s: %(message)s",
 )
 
-seen_ids = set()
-seen_ids_order = deque()
-history = []
 
-
-def remember_id(alert_id):
-    """Onthoudt een alert-ID, begrensd tot MAX_SEEN_IDS zodat het
-    geheugengebruik (en het state-bestand) niet onbeperkt groeit."""
-    if alert_id in seen_ids:
-        return
-
-    seen_ids.add(alert_id)
-    seen_ids_order.append(alert_id)
-
-    while len(seen_ids_order) > MAX_SEEN_IDS:
-        oldest = seen_ids_order.popleft()
-        seen_ids.discard(oldest)
-
-
-def load_state():
-    """Laadt seen_ids en historie van schijf, zodat een herstart van de
-    container niet leidt tot het opnieuw publiceren van oude meldingen."""
-    global history
-
-    if not os.path.exists(STATE_FILE):
-        logging.info("Geen bestaande state gevonden op %s, start leeg", STATE_FILE)
-        return
-
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        for alert_id in data.get("seen_ids", []):
-            remember_id(alert_id)
-
-        history = data.get("history", [])[:HISTORY_SIZE]
-
-        logging.info(
-            "State geladen: %d bekende meldingen, %d in historie",
-            len(seen_ids),
-            len(history),
-        )
-    except Exception as exc:
-        logging.warning("Kon state niet laden (%s), start met lege state", exc)
-
-
-def save_state():
-    """Schrijft eerst naar een tijdelijk bestand en vervangt daarna pas het
-    echte state-bestand, zodat een crash tijdens het schrijven nooit een
-    corrupt state.json achterlaat."""
-    tmp_file = f"{STATE_FILE}.tmp"
-
-    try:
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(
-                {"seen_ids": list(seen_ids_order), "history": history},
-                f,
-                ensure_ascii=False,
-            )
-        os.replace(tmp_file, STATE_FILE)
-    except Exception as exc:
-        logging.warning("Kon state niet opslaan: %s", exc)
-
-
-def enrich_alert(alert):
-    """
-    Verrijkt een melding met geocoding en afstand.
-    Werkt alleen als GEOCODING_ENABLED=true en HOME_LAT/HOME_LON zijn ingesteld.
-    """
-
-    if not GEOCODING_ENABLED:
-        return alert
-
-    if not HOME_LAT or not HOME_LON:
-        logging.warning("Geocoding staat aan, maar HOME_LAT/HOME_LON ontbreken")
+def enrich_alert(alert, cfg: Config):
+    """Verrijkt een melding met geocoding en afstand tot huis. Config-fouten
+    (ontbrekende coördinaten) zijn al bij het opstarten afgevangen."""
+    if not cfg.geocoding_enabled:
         return alert
 
     location_parts = []
@@ -123,7 +40,7 @@ def enrich_alert(alert):
     query = ", ".join(location_parts)
 
     try:
-        geo = geocode(query, GEOCODER_USER_AGENT)
+        geo = geocode(query, cfg.geocoder_user_agent)
 
         if not geo:
             logging.warning("Geen geocode-resultaat voor: %s", query)
@@ -131,12 +48,7 @@ def enrich_alert(alert):
 
         alert.lat = geo["lat"]
         alert.lon = geo["lon"]
-        alert.afstand_km = haversine_km(
-            HOME_LAT,
-            HOME_LON,
-            alert.lat,
-            alert.lon,
-        )
+        alert.afstand_km = haversine_km(cfg.home_lat, cfg.home_lon, alert.lat, alert.lon)
 
         logging.info(
             "Geocode OK: %s -> %.5f, %.5f (%s km)",
@@ -152,57 +64,121 @@ def enrich_alert(alert):
     return alert
 
 
-def main():
-    global history
+def process_alerts(alerts, state: AlertState, mqtt, cfg: Config) -> bool:
+    """Publiceert nieuwe meldingen en markeert ze PAS als gezien nadat alle
+    drie de MQTT-publicaties door de broker bevestigd zijn. Zo raakt een
+    melding niet permanent kwijt als MQTT tijdelijk onbereikbaar is: de
+    volgende poll probeert het gewoon opnieuw.
+
+    Geeft True terug als er state is gewijzigd (en dus opgeslagen moet worden).
+    """
+    state_changed = False
+
+    for alert in reversed(alerts):
+        if state.is_seen(alert.id):
+            continue
+
+        alert = enrich_alert(alert, cfg)
+        payload = alert.to_dict()
+
+        # Historie eerst lokaal opbouwen; pas definitief maken als de
+        # publicaties gelukt zijn.
+        candidate_history = ([payload] + state.history)[: cfg.history_size]
+
+        published = (
+            mqtt.publish_json("laatste", payload, retain=True)
+            and mqtt.publish_json("historie", candidate_history, retain=True)
+            and mqtt.publish_json("melding", payload, retain=False)
+        )
+
+        if not published:
+            logging.warning(
+                "MQTT-publicatie niet bevestigd; melding '%s' wordt bij de "
+                "volgende poll opnieuw geprobeerd",
+                alert.titel,
+            )
+            break
+
+        state.history = candidate_history
+        state.remember(alert.id)
+        state_changed = True
+
+        logging.info("Nieuwe melding gepubliceerd: %s", alert.titel)
+
+    return state_changed
+
+
+def touch_heartbeat(path: str) -> None:
+    """Schrijft een heartbeat-timestamp na iedere voltooide poll-iteratie.
+    De Docker-healthcheck controleert de leeftijd hiervan; zo faalt de check
+    alleen als de hoofdloop echt hangt of gestopt is, en niet wanneer de
+    feed of MQTT tijdelijk onbereikbaar is (dat zou een restart-loop geven)."""
+    try:
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(str(time.time()))
+    except Exception as exc:
+        logging.debug("Kon heartbeat niet schrijven: %s", exc)
+
+
+def main() -> int:
+    try:
+        cfg = load_config()
+    except ConfigError as exc:
+        logging.error("Ongeldige configuratie: %s", exc)
+        return 1
 
     logging.info("Alarmeringen Katwijk gestart")
-    logging.info("Feed: %s", FEED_URL)
-    logging.info("MQTT broker: %s:%s", MQTT_HOST, MQTT_PORT)
-    logging.info("MQTT topic base: %s", MQTT_TOPIC_BASE)
+    logging.info("Feed: %s", cfg.feed_url)
+    logging.info("MQTT broker: %s:%s", cfg.mqtt_host, cfg.mqtt_port)
+    logging.info("MQTT topic base: %s", cfg.mqtt_topic_base)
 
-    load_state()
+    state = AlertState(max_seen_ids=cfg.max_seen_ids, history_size=cfg.history_size)
+    state.load(cfg.state_file)
 
     mqtt = MqttPublisher(
-        host=MQTT_HOST,
-        port=MQTT_PORT,
-        user=MQTT_USER,
-        password=MQTT_PASSWORD,
-        topic_base=MQTT_TOPIC_BASE,
+        host=cfg.mqtt_host,
+        port=cfg.mqtt_port,
+        user=cfg.mqtt_user,
+        password=cfg.mqtt_password,
+        topic_base=cfg.mqtt_topic_base,
     )
 
-    while True:
+    # Graceful shutdown: bij SIGTERM/SIGINT (Portainer-update, herstart)
+    # de lopende iteratie afmaken, state wegschrijven en MQTT netjes sluiten.
+    stop = threading.Event()
+
+    def _handle_signal(signum, frame):
+        logging.info("Signaal %s ontvangen, netjes afsluiten...", signum)
+        stop.set()
+
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
+    while not stop.is_set():
         try:
-            alerts = fetch_alerts(FEED_URL, HISTORY_SIZE)
-            state_changed = False
+            alerts = fetch_alerts(cfg.feed_url, cfg.history_size, cfg.geocoder_user_agent)
+        except requests.RequestException as exc:
+            logging.warning("Feed niet bereikbaar: %s", exc)
+        except FeedError as exc:
+            logging.warning("Feed niet te parsen: %s", exc)
+        else:
+            try:
+                if process_alerts(alerts, state, mqtt, cfg):
+                    state.save(cfg.state_file)
+            except Exception:
+                logging.exception("Fout bij verwerken/publiceren")
 
-            for alert in reversed(alerts):
-                if alert.id in seen_ids:
-                    continue
+        touch_heartbeat(cfg.heartbeat_file)
+        stop.wait(cfg.interval)
 
-                remember_id(alert.id)
-                state_changed = True
-
-                alert = enrich_alert(alert)
-
-                alert_payload = alert.to_dict()
-
-                history.insert(0, alert_payload)
-                history = history[:HISTORY_SIZE]
-
-                mqtt.publish_json("laatste", alert_payload, retain=True)
-                mqtt.publish_json("historie", history, retain=True)
-                mqtt.publish_json("melding", alert_payload, retain=False)
-
-                logging.info("Nieuwe melding gepubliceerd: %s", alert.titel)
-
-            if state_changed:
-                save_state()
-
-        except Exception as exc:
-            logging.exception("Fout bij ophalen/publiceren: %s", exc)
-
-        time.sleep(INTERVAL)
+    state.save(cfg.state_file)
+    mqtt.close()
+    logging.info("Gestopt")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

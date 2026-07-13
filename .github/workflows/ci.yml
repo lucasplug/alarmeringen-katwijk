@@ -1,4 +1,4 @@
-name: Build and Publish Docker Image
+name: CI
 
 on:
   push:
@@ -6,20 +6,35 @@ on:
       - main
     tags:
       - "v*.*.*"
+  pull_request:
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  docker:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -v
 
+  # Bouwt altijd (ook op PR's, om Dockerfile-fouten te vangen), maar pusht
+  # alleen naar GHCR bij een push naar main of een v*.*.*-tag, en alleen
+  # nadat de tests geslaagd zijn.
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Login to GHCR
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -40,6 +55,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
