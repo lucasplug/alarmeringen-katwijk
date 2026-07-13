@@ -6,6 +6,13 @@ services:
     image: ghcr.io/lucasplug/alarmeringen-katwijk:latest
     container_name: alarmeringen-katwijk
     restart: unless-stopped
+    # Lichte hardening; /app/data blijft schrijfbaar via het volume.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 256m
+    cpus: 0.50
     environment:
       MQTT_HOST: "mqtt.example.local"
       MQTT_PORT: "1883"

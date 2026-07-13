@@ -44,6 +44,10 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 | `GEOCODER_USER_AGENT` | User-Agent voor Nominatim-verzoeken | `alarmeringen-katwijk/1.0` |
 | `STATE_FILE` | Pad naar het state-bestand (seen_ids/historie) | `/app/data/state.json` |
 | `MAX_SEEN_IDS` | Max. aantal onthouden alert-ID's | `1000` |
+| `HEARTBEAT_FILE` | Pad naar het heartbeat-bestand voor de healthcheck | `/app/data/heartbeat` |
+| `LOG_LEVEL` | Logniveau (`DEBUG`, `INFO`, `WARNING`, ...) | `INFO` |
+
+Ongeldige verplichte waarden (bv. een MQTT-poort buiten 1–65535) stoppen de container met een duidelijke foutmelding; herstelbare waarden worden geclampt met een warning in de log.
 
 ---
 
@@ -59,7 +63,12 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 docker compose up -d
 ```
 
-Nieuwe release uitrollen: `docker compose pull && docker compose up -d`.
+**Updaten:** `docker compose pull && docker compose up -d` (de stack volgt `:latest`).
+
+**Terugrollen:** zet in de compose tijdelijk een specifieke versietag (bv.
+`image: ghcr.io/lucasplug/alarmeringen-katwijk:1.0.0`) of een image-digest
+(`docker images --digests`), en draai `docker compose up -d`. Terug naar
+nieuwste: tag weer op `:latest` zetten en opnieuw pullen.
 
 **Lokaal ontwikkelen** (bouwt uit de broncode, leest `.env`):
 
@@ -79,6 +88,37 @@ docker compose -f docker-compose.dev.yml up -d --build
 
 Beide compose-varianten mounten een named volume op `/app/data`, zodat `state.json`
 (en dus je "reeds geziene meldingen") een herstart van de container overleeft.
+
+---
+
+## Betrouwbaarheid
+
+- Meldingen worden met **MQTT QoS 1** gepubliceerd en pas als "gezien" gemarkeerd
+  nadat de broker alle drie de publicaties heeft bevestigd. Valt MQTT tijdelijk
+  weg, dan wordt de melding bij een volgende poll gewoon opnieuw geprobeerd —
+  er gaat geen alarmering permanent verloren.
+- De RSS-feed wordt opgehaald met expliciete timeouts en statuscontrole, zodat
+  een hangende verbinding de poll-loop niet blokkeert.
+- De container heeft een **healthcheck** op basis van een heartbeat die de
+  hoofdloop na iedere iteratie schrijft. Tijdelijke uitval van de feed of MQTT
+  houdt de container gewoon healthy (geen restart-loop); alleen een echt
+  hangende of gestopte loop wordt unhealthy.
+- Bij `SIGTERM` (Portainer-update, herstart) wordt de state weggeschreven en de
+  MQTT-verbinding netjes gesloten.
+
+---
+
+## Ontwikkelen & testen
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+De tests draaien volledig zonder netwerk (RSS, MQTT en geocoding zijn gemockt)
+en dekken o.a. feed-parsing, nieuw-vs-gezien, de publiceer-dan-onthouden-volgorde
+bij MQTT-storingen, state-opslag, historie- en seen-ids-begrenzing, de
+geocodecache en configuratievalidatie.
 
 ---
 
