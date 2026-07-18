@@ -115,7 +115,7 @@ def load_config() -> Config:
         mqtt_port=mqtt_port,
         mqtt_user=os.getenv("MQTT_USER", ""),
         mqtt_password=os.getenv("MQTT_PASSWORD", ""),
-        mqtt_topic_base=os.getenv("MQTT_TOPIC_BASE", "alarmeringen/p2000"),
+        mqtt_topic_base=os.getenv("MQTT_TOPIC_BASE", "p2000"),
         interval=interval,
         history_size=history_size,
         geocoding_enabled=geocoding_enabled,

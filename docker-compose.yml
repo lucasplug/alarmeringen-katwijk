@@ -20,7 +20,7 @@ services:
       MQTT_PORT: "1883"
       MQTT_USER: "mqtt"
       MQTT_PASSWORD: "vervang_dit"
-      MQTT_TOPIC_BASE: "alarmeringen/katwijk"
+      MQTT_TOPIC_BASE: "p2000"
       FEED_URL: "https://alarmeringen.nl/feeds/city/katwijk.rss"
       INTERVAL: "60"
       HISTORY_SIZE: "5"

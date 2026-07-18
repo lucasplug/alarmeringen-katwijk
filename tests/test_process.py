@@ -37,7 +37,7 @@ def make_config(**overrides) -> Config:
         mqtt_port=1883,
         mqtt_user="",
         mqtt_password="",
-        mqtt_topic_base="alarmeringen/katwijk",
+        mqtt_topic_base="p2000",
         interval=60,
         history_size=5,
         geocoding_enabled=False,
