@@ -15,15 +15,39 @@ def clean_env(monkeypatch):
         "GEOCODING_ENABLED",
         "HOME_LAT",
         "HOME_LON",
+        "LOCATION_NAME",
+        "COUNTRY_NAME",
+        "FEED_URL",
     ):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("LOCATION_NAME", "Katwijk")
+    monkeypatch.setenv("FEED_URL", "https://example.test/katwijk.rss")
 
 
 def test_defaults_are_valid():
     cfg = load_config()
+    assert cfg.location_name == "Katwijk"
+    assert cfg.country_name == "Nederland"
     assert cfg.mqtt_port == 1883
     assert cfg.interval == 60
     assert cfg.history_size == 5
+
+
+def test_location_name_is_required(monkeypatch):
+    monkeypatch.delenv("LOCATION_NAME")
+    with pytest.raises(ConfigError, match="LOCATION_NAME"):
+        load_config()
+
+
+def test_feed_url_is_required(monkeypatch):
+    monkeypatch.delenv("FEED_URL")
+    with pytest.raises(ConfigError, match="FEED_URL"):
+        load_config()
+
+
+def test_country_name_may_be_overridden(monkeypatch):
+    monkeypatch.setenv("COUNTRY_NAME", "België")
+    assert load_config().country_name == "België"
 
 
 def test_invalid_mqtt_port_raises(monkeypatch):

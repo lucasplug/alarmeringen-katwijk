@@ -1,4 +1,4 @@
-# 🚒 Alarmeringen Katwijk
+# 🚨 P2000 MQTT-monitor
 
 Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en nieuwe meldingen publiceert naar een MQTT-broker. Ontworpen voor gebruik met Home Assistant, Frigate, Node-RED en andere MQTT-clients.
 
@@ -30,24 +30,37 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 
 | Variabele | Omschrijving | Standaard |
 |------------|--------------|-----------|
+| `LOCATION_NAME` | Plaats of gebied voor locatieherkenning en geocoding | **verplicht** |
+| `COUNTRY_NAME` | Land voor geocoding | `Nederland` |
 | `MQTT_HOST` | MQTT Broker | `localhost` |
 | `MQTT_PORT` | MQTT Poort | `1883` |
 | `MQTT_USER` | MQTT Gebruiker | *(leeg)* |
 | `MQTT_PASSWORD` | MQTT Wachtwoord | *(leeg)* |
-| `MQTT_TOPIC_BASE` | Basis MQTT-topic | `alarmeringen/katwijk` |
-| `FEED_URL` | RSS Feed | `https://alarmeringen.nl/feeds/city/katwijk.rss` |
+| `MQTT_TOPIC_BASE` | Basis MQTT-topic | `alarmeringen/p2000` |
+| `FEED_URL` | RSS-feed voor de gekozen plaats of het gebied | **verplicht** |
 | `INTERVAL` | Polling interval (seconden) | `60` |
 | `HISTORY_SIZE` | Aantal meldingen in historie | `5` |
 | `GEOCODING_ENABLED` | Geocoding aan/uit | `true` |
 | `HOME_LAT` | Breedtegraad van je huis (voor afstand) | *(leeg)* |
 | `HOME_LON` | Lengtegraad van je huis (voor afstand) | *(leeg)* |
-| `GEOCODER_USER_AGENT` | User-Agent voor Nominatim-verzoeken | `alarmeringen-katwijk/1.0` |
+| `GEOCODER_USER_AGENT` | User-Agent voor Nominatim-verzoeken | `p2000-mqtt/1.0` |
 | `STATE_FILE` | Pad naar het state-bestand (seen_ids/historie) | `/app/data/state.json` |
 | `MAX_SEEN_IDS` | Max. aantal onthouden alert-ID's | `1000` |
 | `HEARTBEAT_FILE` | Pad naar het heartbeat-bestand voor de healthcheck | `/app/data/heartbeat` |
 | `LOG_LEVEL` | Logniveau (`DEBUG`, `INFO`, `WARNING`, ...) | `INFO` |
 
 Ongeldige verplichte waarden (bv. een MQTT-poort buiten 1–65535) stoppen de container met een duidelijke foutmelding; herstelbare waarden worden geclampt met een warning in de log.
+
+De applicatie is niet aan Katwijk gebonden. Gebruik voor een andere plaats een
+bijpassende combinatie van `LOCATION_NAME`, `FEED_URL` en `MQTT_TOPIC_BASE`.
+Bijvoorbeeld voor Noordwijk:
+
+```yaml
+LOCATION_NAME: "Noordwijk"
+COUNTRY_NAME: "Nederland"
+FEED_URL: "https://alarmeringen.nl/feeds/city/noordwijk.rss"
+MQTT_TOPIC_BASE: "alarmeringen/noordwijk"
+```
 
 ---
 
@@ -77,6 +90,8 @@ git clone https://github.com/lucasplug/alarmeringen-katwijk.git
 cd alarmeringen-katwijk
 cat > .env << 'EOF'
 MQTT_HOST=mqtt.example.local
+LOCATION_NAME=Katwijk
+COUNTRY_NAME=Nederland
 MQTT_PORT=1883
 MQTT_USER=mqtt
 MQTT_PASSWORD=vervang_dit
