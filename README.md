@@ -20,9 +20,9 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 
 | Topic | Retained | Omschrijving |
 |--------|:--------:|--------------|
-| `alarmeringen/katwijk/laatste` | ✅ | Laatste melding |
-| `alarmeringen/katwijk/historie` | ✅ | Laatste 5 meldingen |
-| `alarmeringen/katwijk/melding` | ❌ | Alleen nieuwe meldingen |
+| `p2000/laatste` | ✅ | Laatste melding |
+| `p2000/historie` | ✅ | Laatste 5 meldingen |
+| `p2000/melding` | ❌ | Alleen nieuwe meldingen |
 
 ---
 
@@ -36,7 +36,7 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 | `MQTT_PORT` | MQTT Poort | `1883` |
 | `MQTT_USER` | MQTT Gebruiker | *(leeg)* |
 | `MQTT_PASSWORD` | MQTT Wachtwoord | *(leeg)* |
-| `MQTT_TOPIC_BASE` | Basis MQTT-topic | `alarmeringen/p2000` |
+| `MQTT_TOPIC_BASE` | Basis MQTT-topic | `p2000` |
 | `FEED_URL` | RSS-feed voor de gekozen plaats of het gebied | **verplicht** |
 | `INTERVAL` | Polling interval (seconden) | `60` |
 | `HISTORY_SIZE` | Aantal meldingen in historie | `5` |
@@ -59,7 +59,7 @@ Bijvoorbeeld voor Noordwijk:
 LOCATION_NAME: "Noordwijk"
 COUNTRY_NAME: "Nederland"
 FEED_URL: "https://alarmeringen.nl/feeds/city/noordwijk.rss"
-MQTT_TOPIC_BASE: "alarmeringen/noordwijk"
+MQTT_TOPIC_BASE: "p2000"
 ```
 
 ---
@@ -144,9 +144,9 @@ Voeg de MQTT-integratie toe en configureer deze met dezelfde broker.
 Voorbeeldtopics:
 
 ```
-alarmeringen/katwijk/laatste
-alarmeringen/katwijk/historie
-alarmeringen/katwijk/melding
+p2000/laatste
+p2000/historie
+p2000/melding
 ```
 
 ---
