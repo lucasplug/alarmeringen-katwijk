@@ -33,9 +33,9 @@ def enrich_alert(alert, cfg: Config):
     if getattr(alert, "plaats", ""):
         location_parts.append(alert.plaats)
     else:
-        location_parts.append("Katwijk")
+        location_parts.append(cfg.location_name)
 
-    location_parts.append("Nederland")
+    location_parts.append(cfg.country_name)
 
     query = ", ".join(location_parts)
 
@@ -130,7 +130,7 @@ def main() -> int:
         logging.error("Ongeldige configuratie: %s", exc)
         return 1
 
-    logging.info("Alarmeringen Katwijk gestart")
+    logging.info("P2000-monitor gestart voor %s", cfg.location_name)
     logging.info("Feed: %s", cfg.feed_url)
     logging.info("MQTT broker: %s:%s", cfg.mqtt_host, cfg.mqtt_port)
     logging.info("MQTT topic base: %s", cfg.mqtt_topic_base)
@@ -159,7 +159,12 @@ def main() -> int:
 
     while not stop.is_set():
         try:
-            alerts = fetch_alerts(cfg.feed_url, cfg.history_size, cfg.geocoder_user_agent)
+            alerts = fetch_alerts(
+                cfg.feed_url,
+                cfg.history_size,
+                cfg.geocoder_user_agent,
+                cfg.location_name,
+            )
         except requests.RequestException as exc:
             logging.warning("Feed niet bereikbaar: %s", exc)
         except FeedError as exc:
