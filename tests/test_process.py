@@ -31,6 +31,8 @@ class FakeMqtt:
 def make_config(**overrides) -> Config:
     values = dict(
         feed_url="https://example.test/feed.rss",
+        location_name="Katwijk",
+        country_name="Nederland",
         mqtt_host="localhost",
         mqtt_port=1883,
         mqtt_user="",
@@ -52,7 +54,7 @@ def make_config(**overrides) -> Config:
 
 @pytest.fixture()
 def alerts():
-    return parse_feed(FIXTURE.read_bytes(), limit=5)
+    return parse_feed(FIXTURE.read_bytes(), limit=5, location_name="Katwijk")
 
 
 def test_multiple_new_alerts_published_oldest_first(alerts):
