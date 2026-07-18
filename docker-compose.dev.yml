@@ -11,6 +11,8 @@ services:
     env_file:
       - .env
     environment:
+      LOCATION_NAME: "${LOCATION_NAME:-Katwijk}"
+      COUNTRY_NAME: "${COUNTRY_NAME:-Nederland}"
       TZ: Europe/Amsterdam
     volumes:
       - alarmeringen-data:/app/data
