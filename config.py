@@ -121,7 +121,9 @@ def load_config() -> Config:
         geocoding_enabled=geocoding_enabled,
         home_lat=home_lat,
         home_lon=home_lon,
-        geocoder_user_agent=os.getenv("GEOCODER_USER_AGENT", "p2000-mqtt/1.0"),
+        geocoder_user_agent=os.getenv(
+            "GEOCODER_USER_AGENT", "alarmeringen-mqtt-bridge/1.0"
+        ),
         state_file=os.getenv("STATE_FILE", "/app/data/state.json"),
         max_seen_ids=max_seen_ids,
         heartbeat_file=os.getenv("HEARTBEAT_FILE", "/app/data/heartbeat"),
