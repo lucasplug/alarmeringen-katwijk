@@ -43,7 +43,7 @@ Een lichte Docker-container die de RSS-feed van **alarmeringen.nl** uitleest en 
 | `GEOCODING_ENABLED` | Geocoding aan/uit | `true` |
 | `HOME_LAT` | Breedtegraad van je huis (voor afstand) | *(leeg)* |
 | `HOME_LON` | Lengtegraad van je huis (voor afstand) | *(leeg)* |
-| `GEOCODER_USER_AGENT` | User-Agent voor Nominatim-verzoeken | `p2000-mqtt/1.0` |
+| `GEOCODER_USER_AGENT` | User-Agent voor Nominatim-verzoeken | `alarmeringen-mqtt-bridge/1.0` |
 | `STATE_FILE` | Pad naar het state-bestand (seen_ids/historie) | `/app/data/state.json` |
 | `MAX_SEEN_IDS` | Max. aantal onthouden alert-ID's | `1000` |
 | `HEARTBEAT_FILE` | Pad naar het heartbeat-bestand voor de healthcheck | `/app/data/heartbeat` |
@@ -79,15 +79,15 @@ docker compose up -d
 **Updaten:** `docker compose pull && docker compose up -d` (de stack volgt `:latest`).
 
 **Terugrollen:** zet in de compose tijdelijk een specifieke versietag (bv.
-`image: ghcr.io/lucasplug/alarmeringen-katwijk:1.0.0`) of een image-digest
+`image: ghcr.io/lucasplug/alarmeringen-mqtt-bridge:1.0.0`) of een image-digest
 (`docker images --digests`), en draai `docker compose up -d`. Terug naar
 nieuwste: tag weer op `:latest` zetten en opnieuw pullen.
 
 **Lokaal ontwikkelen** (bouwt uit de broncode, leest `.env`):
 
 ```bash
-git clone https://github.com/lucasplug/alarmeringen-katwijk.git
-cd alarmeringen-katwijk
+git clone https://github.com/lucasplug/alarmeringen-mqtt-bridge.git
+cd alarmeringen-mqtt-bridge
 cat > .env << 'EOF'
 MQTT_HOST=mqtt.example.local
 LOCATION_NAME=Katwijk
